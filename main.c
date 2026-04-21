@@ -8,7 +8,21 @@
 #include<stdlib.h>
 #include<unistd.h> //for close()
 
-int main(int argc, char *argv) {
+struct client {
+    int sfd;
+    char user_name[50];
+};
+
+//cleint finder
+struct client* find_client(int fd, struct client clients[], int count) {
+    for (int i = 0; i < count; i++) {
+        if (clients[i].sfd == fd)
+            return &clients[i];
+    }
+    return NULL;
+}
+
+int main(int argc, char **argv) {
 
     struct addrinfo hints, *res, *p;
     memset(&hints, 0, sizeof hints);
@@ -81,13 +95,16 @@ int main(int argc, char *argv) {
     // Only monitoring read_fds
     // this inside while loop
     
-    char reply[1024];
+    
     char buffer[1024];
+
+    struct client clients[100]; //for new 100 max clients
+    int client_count = 0;
 
     //we gon multipelx on this shit
     while(1) {
 
-        //clearing ze buffers)
+        //clearing ze buffers
         memset(buffer, 0, sizeof(buffer));
 
         working_set = read_fds;
@@ -103,38 +120,73 @@ int main(int argc, char *argv) {
                     if (i == sockfd) {
 
                         //new connection has joined
+
                         int new_sock_fd = accept(sockfd, (struct sockaddr*)&their_addr, &their_socklen); //creates brand new FD
                         FD_SET(new_sock_fd, &read_fds);
-                        send(new_sock_fd, message, sizeof(message), 0); 
 
                         if (new_sock_fd > max_fd)
                             max_fd = new_sock_fd;
+
+                        //store the clients now
+                        clients[client_count].sfd = new_sock_fd;
+                        strcpy(clients[client_count].user_name, "test user");
+                        client_count++;
+
+                        send(new_sock_fd, "Enter username : ", strlen("Enter username : "), 0); 
+
                     }
                     
                     else {
 
+                        struct client *c = find_client(i, clients, client_count);
                         //existing connection
+
                         int n = recv(i, buffer, sizeof(buffer), 0);
 
                         if (n <= 0) {
                             //error so remove that client
                             close(i);
                             FD_CLR(i, &read_fds);
+                            continue;
 
                         }
 
-                        snprintf(reply, sizeof(reply), "Client said : %s", buffer);
+                        buffer[strcspn(buffer, "\n")] = 0; //removing new line if present
 
-                        //i is sender, rest all -> j loop is recivier
+                        //if username not assigned
+                        if (strcmp(c->user_name, "test user") == 0) {
+                            strcpy(c->user_name, buffer);
 
-                        for (int j = 0; j <= max_fd; j++) {
-                            if (FD_ISSET(j, &read_fds)) {
-                                if (j != sockfd && j != i) {
-                                    send(j, reply, strlen(reply), 0);
+                            char first_message[100];
+                            snprintf(first_message, sizeof(first_message), "Welcome %s!\n", c->user_name);
+                            send(i, first_message, strlen(first_message), 0);
+                            char temp_buffer_number_iforgot[50];
+                            snprintf(temp_buffer_number_iforgot, sizeof(temp_buffer_number_iforgot), "%s : ", c->user_name);
+                            send(i, temp_buffer_number_iforgot, strlen(temp_buffer_number_iforgot), 0);
+
+                        }
+                        
+                        else {
+
+                            //i is sender, rest all -> j loop is recivier
+
+                            for (int j = 0; j <= max_fd; j++) {
+                                if (FD_ISSET(j, &read_fds)) {
+                                    if (j != sockfd && j != i) {
+                                        char reply[1024];
+                                        snprintf(reply, sizeof(reply), "%s : %s\n", c->user_name, buffer);
+                                        send(j, reply, strlen(reply), 0);
+                                    }
+
                                 }
-
+            
                             }
-        
+
+                            //resending name thingy
+                            char buffer_67[60];
+                            snprintf(buffer_67, sizeof(buffer_67), "%s : \n", c->user_name);
+                            send(i, buffer_67, strlen(buffer_67), 0);
+
                         }
 
                     }
