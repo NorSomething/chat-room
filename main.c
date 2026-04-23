@@ -81,7 +81,7 @@ int main(int argc, char **argv) {
     struct sockaddr_storage their_addr; //sockaddr_storage so we can fit ipv6 stuff too
     socklen_t their_socklen = sizeof(their_addr); //can be int also but this is better i think
 
-    char message[] = "hi from nirmal!\nEnter some thing... (q to exit)\n";
+    char message[] = "hi from nirmal!\nWelcome to my chatroom... \n";
 
     //adding select logic
     //imp: select() modifies your fd_set!!
@@ -156,14 +156,9 @@ int main(int argc, char **argv) {
                         //if username not assigned
                         if (strcmp(c->user_name, "test user") == 0) {
                             strcpy(c->user_name, buffer);
-
                             char first_message[100];
                             snprintf(first_message, sizeof(first_message), "Welcome %s!\n", c->user_name);
                             send(i, first_message, strlen(first_message), 0);
-                            char temp_buffer_number_iforgot[50];
-                            snprintf(temp_buffer_number_iforgot, sizeof(temp_buffer_number_iforgot), "%s : ", c->user_name);
-                            send(i, temp_buffer_number_iforgot, strlen(temp_buffer_number_iforgot), 0);
-
                         }
                         
                         else {
@@ -174,18 +169,13 @@ int main(int argc, char **argv) {
                                 if (FD_ISSET(j, &read_fds)) {
                                     if (j != sockfd && j != i) {
                                         char reply[1024];
-                                        snprintf(reply, sizeof(reply), "%s : %s\n", c->user_name, buffer);
+                                        snprintf(reply, sizeof(reply), "%s : %s", c->user_name, buffer);
                                         send(j, reply, strlen(reply), 0);
                                     }
 
                                 }
             
                             }
-
-                            //resending name thingy
-                            char buffer_67[60];
-                            snprintf(buffer_67, sizeof(buffer_67), "%s : \n", c->user_name);
-                            send(i, buffer_67, strlen(buffer_67), 0);
 
                         }
 

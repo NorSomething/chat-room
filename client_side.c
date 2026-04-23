@@ -6,9 +6,30 @@
 #include<arpa/inet.h>
 #include<stdio.h>
 #include<stdlib.h>
+#include<ncurses.h>
 #include<unistd.h> //for close()
 
 int main(int argc, char **argv) {
+
+    initscr();
+    noecho();
+    cbreak();
+
+    int ymax, xmax;
+
+    getmaxyx(stdscr, ymax, xmax);
+
+    WINDOW *main_win = newwin(ymax, xmax, 0, 0);
+    WINDOW *chat_win = newwin(ymax - 3, xmax, 0, 0);
+    WINDOW *message_win = newwin(3, xmax, ymax - 3, 0);
+    refresh();
+
+    WINDOW *scroll_win = newwin(ymax-5, xmax-2, 1, 1);
+    scrollok(scroll_win, TRUE);
+
+    box(main_win, 0, 0);
+    box(chat_win, 0, 0);
+    box(message_win, 0, 0);
 
     struct sockaddr_in server_addr;
 
@@ -39,6 +60,10 @@ int main(int argc, char **argv) {
         FD_SET(0, &read_fds); //0 is STDIN
         FD_SET(sockfd, &read_fds);
 
+        wrefresh(chat_win);
+        wrefresh(message_win);
+
+
         if (select(max_fd+1, &read_fds, NULL, NULL, NULL) == -1) {
             perror("select error");
             exit(1);
@@ -46,8 +71,25 @@ int main(int argc, char **argv) {
 
         if (FD_ISSET(0, &read_fds)) {
             //STDIN has activity
-            fgets(buffer, sizeof(buffer), stdin);
+            // fgets(buffer, sizeof(buffer), stdin);
+
+            //clearing the window again 
+            wmove(message_win, 1, 1);
+            wclrtoeol(message_win);
+            box(message_win, 0, 0);
+
+            echo();
+            mvwgetnstr(message_win, 1, 1, buffer, 1000);
+            noecho();
             send(sockfd, buffer, strlen(buffer), 0);
+
+            wprintw(scroll_win, "you : %s\n", buffer);
+            wrefresh(scroll_win);
+
+            //cleaning up after eating like the good manners my mom taught me
+            wmove(message_win, 1, 1);
+            wclrtoeol(message_win);
+            box(message_win, 0, 0);
         }
 
         if (FD_ISSET(sockfd, &read_fds)) {
@@ -57,13 +99,17 @@ int main(int argc, char **argv) {
                 //connection closed;
                 break;
             }
-            printf("%s", buffer);
+            // printf("%s", buffer);
+            wprintw(scroll_win, "%s\n", buffer);
+            wrefresh(scroll_win);
         }
 
     }
 
     close(sockfd);
 
+    getch();
+    endwin();
 
 
     return 0;
