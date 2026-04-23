@@ -57,7 +57,7 @@ int main(int argc, char **argv) {
             return -1; 
         }
 
-        if ((bind(sockfd, p->ai_addr, p->ai_addrlen)) == -1) {
+        if ((bind(sockfd, p->ai_addr, p->ai_addrlen)) == -1) { //here ai_addr is sockaddr struct struct
             close(sockfd); //close cuz bind failed 
             perror("server: bind");
             continue;
