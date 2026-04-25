@@ -8,6 +8,9 @@
 #include<stdlib.h>
 #include<unistd.h> //for close()
 
+char *list_of_connections[100];
+int loc = 0;
+
 struct client {
     int sfd;
     char user_name[50];
@@ -81,7 +84,7 @@ int main(int argc, char **argv) {
     struct sockaddr_storage their_addr; //sockaddr_storage so we can fit ipv6 stuff too
     socklen_t their_socklen = sizeof(their_addr); //can be int also but this is better i think
 
-    char message[] = "hi from nirmal!\nWelcome to my chatroom... \n";
+    // char message[] = "hi from nirmal!\nWelcome to my chatroom... \n";
 
     //adding select logic
     //imp: select() modifies your fd_set!!
@@ -100,6 +103,7 @@ int main(int argc, char **argv) {
 
     struct client clients[100]; //for new 100 max clients
     int client_count = 0;
+
 
     //we gon multipelx on this shit
     while(1) {
@@ -155,10 +159,33 @@ int main(int argc, char **argv) {
 
                         //if username not assigned
                         if (strcmp(c->user_name, "test user") == 0) {
+                            
                             strcpy(c->user_name, buffer);
-                            char first_message[100];
-                            snprintf(first_message, sizeof(first_message), "Welcome %s!\n", c->user_name);
-                            send(i, first_message, strlen(first_message), 0);
+
+                            list_of_connections[loc++] = c->user_name;
+
+                            char online_msg[512];
+                            snprintf(online_msg, sizeof(online_msg), "ONLINE: ");
+                            for (int k = 0; k < loc; k++) {
+                                strcat(online_msg, list_of_connections[k]);
+                                strcat(online_msg, " ");
+                            }
+                            
+                            strncat(online_msg, "\n", sizeof(online_msg) - strlen(online_msg) - 1);  //adding new line
+
+                            //sending to every client
+                            for (int j = 0; j <= max_fd; j++) {
+                                if (FD_ISSET(j, &read_fds) && j != sockfd) {
+                                    send(j, online_msg, strlen(online_msg), 0);
+                                    // send(j, "\n", 1, 0);  this is buggy cuz send and recv are stream s
+                                }
+                            }
+                        
+                            // char first_message[100];
+                            // snprintf(first_message, sizeof(first_message), "Welcome %s!\n", c->user_name);
+                            // send(i, first_message, strlen(first_message), 0);
+
+                            //they dont need welcome because its getting buggy...
                         }
                         
                         else {
@@ -169,7 +196,7 @@ int main(int argc, char **argv) {
                                 if (FD_ISSET(j, &read_fds)) {
                                     if (j != sockfd && j != i) {
                                         char reply[1024];
-                                        snprintf(reply, sizeof(reply), "%s : %s", c->user_name, buffer);
+                                        snprintf(reply, sizeof(reply), "%s : %s\n", c->user_name, buffer);
                                         send(j, reply, strlen(reply), 0);
                                     }
 

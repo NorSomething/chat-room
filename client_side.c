@@ -22,9 +22,10 @@ int main(int argc, char **argv) {
     WINDOW *main_win = newwin(ymax, xmax, 0, 0);
     WINDOW *chat_win = newwin(ymax - 3, xmax, 0, 0);
     WINDOW *message_win = newwin(3, xmax, ymax - 3, 0);
+    WINDOW *members_win = newwin(ymax - 3, 20, 0, xmax - 20);
     refresh();
 
-    WINDOW *scroll_win = newwin(ymax-5, xmax-2, 1, 1);
+    WINDOW *scroll_win = newwin(ymax-5, xmax-23, 1, 1);
     scrollok(scroll_win, TRUE);
 
     box(main_win, 0, 0);
@@ -62,7 +63,7 @@ int main(int argc, char **argv) {
 
         wrefresh(chat_win);
         wrefresh(message_win);
-
+        wrefresh(members_win);
 
         if (select(max_fd+1, &read_fds, NULL, NULL, NULL) == -1) {
             perror("select error");
@@ -99,9 +100,35 @@ int main(int argc, char **argv) {
                 //connection closed;
                 break;
             }
-            // printf("%s", buffer);
-            wprintw(scroll_win, "%s\n", buffer);
-            wrefresh(scroll_win);
+
+            buffer[n] = '\0'; 
+
+            //splitng on \n and getting each message
+            char *line = strtok(buffer, "\n");
+            while (line != NULL) {
+                    
+                if (strncmp(buffer, "ONLINE:", 7) == 0) {
+
+                    wclear(members_win);
+                    box(members_win, 0, 0);
+                    mvwprintw(members_win, 1, 1, "%s\n", "Online : ");
+                    int row = 2;
+                    char copy[512];
+                    strncpy(copy, buffer+7, sizeof(copy)); //skipping the word online:
+                    copy[strcspn(copy, "\n")] = 0;
+                    char *token = strtok(copy, " ");
+                    while (token) {
+                        mvwprintw(members_win, row++, 1, "%s", token);
+                        token = strtok(NULL, " "); //null means continue where we left off
+                    }
+                    wrefresh(members_win);
+                }
+                else {
+                    wprintw(scroll_win, "%s\n", line);
+                    wrefresh(scroll_win);
+                }
+                line = strtok(NULL, "\n");
+            }
         }
 
     }
