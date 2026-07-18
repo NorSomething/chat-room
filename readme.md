@@ -75,5 +75,5 @@ Multiple clients can be run in separate terminal windows on the same machine for
 
 - [x] Add clean removal of client on exit (VV. Imp!!!) // dirty workaround but it works :p
 - [ ] Per-user color coding for chat messages
-- [ ] Named text channels (rooms)
+- [x] Named text channels (rooms)
 - [ ] UI Overhaul
